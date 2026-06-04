@@ -1,0 +1,34 @@
+{
+  "name": "mactools",
+  "outputfilename": "mactools",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Alex Rembez",
+    "email": "a.rembez@aurumlotus.ru"
+  },
+  "info": {
+    "companyName": "Black Lotus",
+    "productName": "Mac Tools",
+    "productVersion": "2.2.0",
+    "copyright": "Copyright © 2026",
+    "comments": "A simple Mac utility tool"
+  },
+  "build": {
+    "production": {
+      "compiler": "go",
+      "platform": "darwin/universal",
+      "ldflags": "-s -w",
+      "skipBindings": false,
+      "postBuild": ""
+    },
+    "development": {
+      "compiler": "go",
+      "platform": "darwin",
+      "ldflags": "",
+      "skipBindings": false
+    }
+  }
+}

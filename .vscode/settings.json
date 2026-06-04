@@ -1,0 +1,8 @@
+{
+    "json.schemaDownload.enable": true,
+    "http.proxySupport": "on",
+    "json.schemaDownload.urlAllowList": [
+        "https://wails.io"
+    ],
+    "workbench.colorTheme": "Visual Studio Dark"
+}
