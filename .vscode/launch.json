@@ -2,16 +2,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Wails Backend",
+            "name": "Wails: Debug Production Build",
             "type": "go",
             "request": "launch",
-            "mode": "debug",
-            "program": "${workspaceFolder}",
-            "buildFlags": "-tags=dev",
+            "mode": "exec",                   
+            "program": "${workspaceFolder}/build/bin/mactools.app/Contents/MacOS/mactools",
+            "cwd": "${workspaceFolder}",
             "env": {
-                "CGO_ENABLED": "1",
-                "CGO_LDFLAGS": "-framework UniformTypeIdentifiers"
-            }
+                "CGO_ENABLED": "1"
+            },
+            "preLaunchTask": "wails build -debug"
         }
     ]
 }
