@@ -13,15 +13,15 @@ import (
 var mountPoints = map[string]MountPoint{
 	"personal": {
 		DisplayName: "Личная",
-		Template:    "%s -fstype=smbfs,soft,nobrowse,noowners ://blotus.ru/fs/%%D0%%9B%%D0%%B8%%D1%%87%%D0%%BD%%D0%%B0%%D1%%8F/%s",
+		Template:    "{mountPath} -fstype=smbfs,soft,nobrowse,noowners ://blotus.ru/fs/%D0%9B%D0%B8%D1%87%D0%BD%D0%B0%D1%8F/{username}",
 	},
 	"common": {
 		DisplayName: "Подразделения",
-		Template:    "%s -fstype=smbfs,soft,nobrowse,noowners ://blotus.ru/fs/%%D0%%9F%%D0%%BE%%D0%%B4%%D1%%80%%D0%%B0%%D0%%B7%%D0%%B4%%D0%%B5%%D0%%BB%%D0%%B5%%D0%%BD%%D0%%B8%%D1%%8F",
+		Template:    "{mountPath} -fstype=smbfs,soft,nobrowse,noowners ://blotus.ru/fs/%D0%9F%D0%BE%D0%B4%D1%80%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB%D0%B5%D0%BD%D0%B8%D1%8F/",
 	},
 	"department": {
 		DisplayName: "Отдел",
-		Template:    "%s -fstype=smbfs,soft,nobrowse,noowners ://blotus.ru/fs/%%D0%%9E%%D1%%82%%D0%%B4%%D0%%B5%%D0%%BB/%s",
+		Template:    "{mountPath} -fstype=smbfs,soft,nobrowse,noowners ://blotus.ru/fs/%D0%9E%D1%82%D0%B4%D0%B5%D0%BB/{username}",
 	},
 }
 
@@ -155,7 +155,10 @@ func UpdateMountPoints() error {
 	for shareType, mountPoint := range mountPoints {
 		mountPath := fmt.Sprintf("/Users/%s/%s", username, mountPoint.DisplayName)
 		mountFile := fmt.Sprintf("/opt/smbshares/%s", mountPoint.DisplayName)
-		mountString := fmt.Sprintf(mountPoint.Template, mountPath, username)
+		mountString := strings.NewReplacer(
+			"{mountPath}", mountPath,
+			"{username}", username,
+		).Replace(mountPoint.Template)
 		mounted, mountError := checkMountStatus(mountPath)
 
 		mountPoints[shareType] = MountPoint{
