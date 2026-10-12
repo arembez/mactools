@@ -13,7 +13,7 @@ import (
 var mountPoints = map[string]MountPoint{
 	"personal": {
 		DisplayName: "Личная",
-		Template:    "{mountPath} -fstype=smbfs,soft,nobrowse,noowners ://blotus.ru/fs/%D0%9B%D0%B8%D1%87%D0%BD%D0%B0%D1%8F/{username}",
+		Template:    "{mountPath} -fstype=smbfs,soft,nobrowse,noowners ://blotus.ru/fs/%D0%9B%D0%B8%D1%87%D0%BD%D0%B0%D1%8F/home",
 	},
 	"common": {
 		DisplayName: "Подразделения",
