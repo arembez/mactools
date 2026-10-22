@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -759,4 +760,146 @@ func (a *ADManager) GetNetworkInfo() map[string]interface{} {
 	}
 
 	return info
+}
+
+func (a *ADManager) CreateKeytab(principal, password, enctype string) JoinDomainResult {
+	principal = strings.TrimSpace(principal)
+
+	if principal == "" || password == "" {
+		return JoinDomainResult{
+			Success: false,
+			Error:   "Principal and password are required",
+		}
+	}
+
+	if enctype == "" {
+		enctype = "aes256-cts-hmac-sha1-96"
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return JoinDomainResult{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to get home directory: %v", err),
+		}
+	}
+
+	keytabPath := filepath.Join(homeDir, ".keytab")
+
+	for _, tool := range []string{"ktutil", "kinit"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			return JoinDomainResult{
+				Success: false,
+				Error:   fmt.Sprintf("%s not found in PATH", tool),
+			}
+		}
+	}
+
+	// Clean slate.
+	if _, err := os.Stat(keytabPath); err == nil {
+		if err := os.Remove(keytabPath); err != nil {
+			return JoinDomainResult{
+				Success: false,
+				Error:   fmt.Sprintf("Failed to remove existing keytab: %v", err),
+			}
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Step 1: create the keytab entry.
+	//
+	// The KVNO label is cosmetic for a client keytab (KDC reads
+	// its own database, and kinit -k tries every entry). We use
+	// -V 1 as a safe default. This does NOT need to match the
+	// KVNO stored in AD.
+	// ------------------------------------------------------------
+	ktutilCmd := exec.Command(
+		"ktutil", "--keytab="+keytabPath,
+		"add",
+		"-p", principal,
+		"-e", enctype,
+		"-w", password,
+		"-V", "1",
+	)
+	if out, err := ktutilCmd.CombinedOutput(); err != nil {
+		return JoinDomainResult{
+			Success: false,
+			Message: "Failed to create keytab",
+			Error:   fmt.Sprintf("%v: %s", err, strings.TrimSpace(string(out))),
+		}
+	}
+
+	info, err := os.Stat(keytabPath)
+	if err != nil {
+		return JoinDomainResult{
+			Success: false,
+			Error:   fmt.Sprintf("Keytab file not created: %v", err),
+		}
+	}
+
+	if err := os.Chmod(keytabPath, 0600); err != nil {
+		return JoinDomainResult{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to set keytab permissions: %v", err),
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Step 2: verify the keytab actually authenticates.
+	// Use a throw-away credentials cache so we don't disturb
+	// the user's existing session.
+	// ------------------------------------------------------------
+	tmpCC, err := os.CreateTemp("", "krb5cc_verify_*")
+	if err != nil {
+		return JoinDomainResult{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to create temp credential cache: %v", err),
+		}
+	}
+	tmpCCPath := tmpCC.Name()
+	tmpCC.Close()
+	defer os.Remove(tmpCCPath)
+
+	verifyCmd := exec.Command("kinit", "-k", "-t", keytabPath, principal)
+	verifyCmd.Env = append(os.Environ(), "KRB5CCNAME=FILE:"+tmpCCPath)
+	verifyOut, verifyErr := verifyCmd.CombinedOutput()
+
+	if verifyErr != nil {
+		return JoinDomainResult{
+			Success: false,
+			Message: "Keytab created but verification (kinit -k) failed",
+			Error:   fmt.Sprintf("%v: %s", verifyErr, strings.TrimSpace(string(verifyOut))),
+			Details: map[string]string{
+				"path":      keytabPath,
+				"principal": principal,
+			},
+		}
+	}
+
+	exec.Command("kdestroy", "-c", tmpCCPath).Run()
+
+	details := map[string]string{
+		"path":      keytabPath,
+		"principal": principal,
+		"enctype":   enctype,
+		"kvno":      "1",
+		"size":      fmt.Sprintf("%d", info.Size()),
+		"verified":  "true",
+	}
+
+	if listOut, err := exec.Command("klist", "-k", "-e", keytabPath).CombinedOutput(); err == nil {
+		details["entries"] = strings.TrimSpace(string(listOut))
+	}
+
+	if laPath, laErr := installKinitLaunchAgent(keytabPath, principal); laErr == nil {
+		details["launchagent"] = laPath
+	} else {
+		details["launchagent_error"] = laErr.Error()
+	}
+
+	return JoinDomainResult{
+		Success: true,
+		Message: fmt.Sprintf("Keytab created and verified at %s", keytabPath),
+		Details: details,
+	}
 }

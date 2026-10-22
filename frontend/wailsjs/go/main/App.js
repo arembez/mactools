@@ -22,6 +22,10 @@ export function CheckAdminRights() {
   return window['go']['main']['App']['CheckAdminRights']();
 }
 
+export function CreateKeytab(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateKeytab'](arg1, arg2, arg3);
+}
+
 export function DisablePrinter(arg1) {
   return window['go']['main']['App']['DisablePrinter'](arg1);
 }

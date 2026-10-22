@@ -13,6 +13,8 @@ export function ChangeComputerName(arg1:string,arg2:string,arg3:string):Promise<
 
 export function CheckAdminRights():Promise<boolean>;
 
+export function CreateKeytab(arg1:string,arg2:string,arg3:string):Promise<admanager.JoinDomainResult>;
+
 export function DisablePrinter(arg1:string):Promise<void>;
 
 export function EnablePrinter(arg1:string):Promise<void>;

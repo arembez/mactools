@@ -7,6 +7,7 @@ function App() {
   const [desiredHostname, setDesiredHostname] = useState('')
   const [originalHostname, setOriginalHostname] = useState('')
   const [domainStatus, setDomainStatus] = useState({})
+  const [keytabInfo, setKeytabInfo] = useState(null)
   
   const [saveEnabled, setSaveEnabled] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -523,7 +524,7 @@ function App() {
       if (window.go && window.go.main && window.go.main.App) {
         const app = window.go.main.App
         const isValid = await app.VerifyAdminPassword(adminPassword)
-        
+
         if (isValid) {
           try {
             await app.ExtendSudoSession(adminPassword)
@@ -531,7 +532,48 @@ function App() {
           } catch (extendError) {
             console.warn('Failed to extend sudo session:', extendError)
           }
-          
+
+          try {
+            const [domainStatus, systemInfo] = await Promise.all([
+              app.GetDomainStatus(),
+              app.GetSystemInfo(),
+            ])
+
+            const domain = (domainStatus && domainStatus.domain) || ''
+            const username = (systemInfo && systemInfo.username) || ''
+            const joined = !!(domainStatus && domainStatus.joined)
+
+            if (joined && domain && username) {
+              const principal = `${username}@${domain.toUpperCase()}`
+              const result = await app.CreateKeytab(principal, adminPassword, '')
+
+              const ok =
+                result?.success === true ||
+                result?.Success === true
+
+              const details = result?.details || result?.Details || {}
+              const errMsg  = result?.error   || result?.Error   || ''
+
+              if (ok) {
+                const path = details.path || '~/.keytab'
+                setKeytabInfo({ present: true, path })
+                console.log(`Keytab created at ${path}`)
+              } else {
+                setKeytabInfo({
+                  present: false,
+                  error: errMsg || 'Keytab creation failed',
+                })
+                console.warn('Keytab creation returned failure:', errMsg || result)
+              }
+            } else {
+              console.warn('Skipping keytab creation: machine not joined or principal data missing')
+              setKeytabInfo({ present: false, error: 'Machine not joined to domain' })
+            }
+          } catch (keytabError) {
+            console.warn('Failed to create keytab:', keytabError)
+            setKeytabInfo({ present: false, error: keytabError.message })
+          }
+
           setIsAdminAuthenticated(true)
           setShowAdminPasswordModal(false)
           showMessage('Administrator authenticated successfully', 'success')
@@ -1475,6 +1517,40 @@ function App() {
                 <div className="info-item">
                   <span className="info-label">Hostname</span>
                   <span className="info-value">{hostname || 'Loading...'}</span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Keytab</span>
+                  <span className="info-value">
+                    {keytabInfo === null ? (
+                      <span
+                        className="keytab-badge keytab-unknown"
+                        title="No keytab information available yet — authenticate as administrator to generate one"
+                      >
+                        Unknown
+                      </span>
+                    ) : keytabInfo.present ? (
+                      <span
+                        className="keytab-badge keytab-present"
+                        title={
+                          `Path: ${keytabInfo.path}\n` +
+                          (keytabInfo.details?.principal    ? `Principal: ${keytabInfo.details.principal}\n` : '') +
+                          (keytabInfo.details?.launchagent  ? `Refresh agent: ${keytabInfo.details.launchagent}\n` : '') +
+                          (keytabInfo.details?.launchagent_error
+                              ? `⚠ Refresh agent: ${keytabInfo.details.launchagent_error}`
+                              : '')
+                        }
+                      >
+                        ✓ Present
+                      </span>
+                    ) : (
+                      <span
+                        className="keytab-badge keytab-absent"
+                        title={keytabInfo.error || 'Keytab is not present'}
+                      >
+                        ✗ Not present
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
 

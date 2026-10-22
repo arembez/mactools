@@ -68,6 +68,12 @@ func (a *App) ExtendSudoSession(password string) bool {
 	return true
 }
 
+func (a *App) CreateKeytab(principal, password, enctype string) admanager.JoinDomainResult {
+	var result admanager.JoinDomainResult
+	result = a.adMgr.CreateKeytab(principal, password, enctype)
+	return result
+}
+
 func (a *App) GetCurrentHostname() string {
 	return a.adMgr.GetCurrentHostname()
 }

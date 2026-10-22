@@ -1500,3 +1500,17 @@ html, body, #root {
   background: var(--bg-hover, #f3f4f6);
   color: var(--text-primary, #1f2937);
 }
+
+.keytab-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: help;
+}
+.keytab-present  { color: #1a7f37; background: #dafbe1; }
+.keytab-absent   { color: #cf222e; background: #ffebe9; }
+.keytab-unknown  { color: #6c757d; background: #eef0f2; }
